@@ -3,193 +3,338 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OCCS | Analyseur de reputation IP</title>
+<title>OCCS | Vérification de réputation IP</title>
 <style>
   :root {
-    --bg: #0d1117;
-    --panel: #151b23;
-    --panel-border: #262e3a;
-    --text: #e6e8eb;
-    --text-dim: #8a94a3;
-    --accent: #ff7900;
-    --accent-dim: #cc6100;
-    --mono: "SFMono-Regular", "JetBrains Mono", Consolas, Menlo, monospace;
-    --sans: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
-    --malveillant: #e5484d;
-    --suspect: #f5a524;
-    --sain: #3dd68c;
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --border: #e1e4ea;
+    --ink: #1c2430;
+    --ink-soft: #5b6472;
+    --ink-faint: #8a93a3;
+    --orange: #ff7900;
+    --orange-deep: #b85700;
+    --orange-wash: #fff1e5;
+    --danger: #b3261e;
+    --danger-wash: #fbeae9;
+    --warn: #9a5b00;
+    --warn-wash: #fdf1de;
+    --ok: #196c40;
+    --ok-wash: #e7f4ec;
+    --sans: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Consolas, Menlo, monospace;
+    --radius-sm: 6px;
+    --radius-md: 10px;
   }
+
   * { box-sizing: border-box; }
+
   body {
     margin: 0;
     background: var(--bg);
-    color: var(--text);
+    color: var(--ink);
     font-family: var(--sans);
-    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
+
+  a:focus-visible, button:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--orange-deep);
+    outline-offset: 2px;
+  }
+
+  /* ---------- Header ---------- */
   header {
-    border-bottom: 1px solid var(--panel-border);
-    padding: 28px 40px 22px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 32px;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
   }
-  header .brand { display: flex; align-items: center; gap: 12px; }
-  .logo-mark {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    background: var(--accent);
-    color: #1a1005;
-    font-weight: 800;
-    font-size: 0.72rem;
-    letter-spacing: 0.02em;
+
+  .brand { display: flex; align-items: center; gap: 14px; }
+
+  .mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 11px;
+    background: var(--orange);
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
   }
-  header h1 {
+  .mark svg { width: 22px; height: 22px; }
+
+  .brand-text h1 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
+    line-height: 1.25;
   }
-  header h1 .subtitle {
-    display: block;
-    font-size: 0.72rem;
-    font-weight: 500;
-    color: var(--text-dim);
-    letter-spacing: 0.01em;
-    margin-top: 2px;
+  .brand-text p {
+    margin: 1px 0 0;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
   }
-  header h1 span.accent { color: var(--accent); }
-  #api-status {
-    font-family: var(--mono);
+
+  .status-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 0.78rem;
-    color: var(--text-dim);
-  }
-  #api-status .warn { color: var(--suspect); }
-  main {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 32px 40px 60px;
-  }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--panel-border);
-    border-radius: 10px;
-    padding: 22px 24px;
-    margin-bottom: 24px;
-  }
-  .panel h2 {
-    margin: 0 0 14px;
-    font-size: 0.95rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
     font-weight: 600;
+    padding: 5px 10px 5px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--ink-soft);
+    background: var(--surface);
   }
+  .status-chip .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ink-faint);
+  }
+  .status-chip.ok { color: var(--ok); border-color: #c9e6d3; background: var(--ok-wash); }
+  .status-chip.ok .dot { background: var(--ok); }
+  .status-chip.warn { color: var(--warn); border-color: #f0dcb0; background: var(--warn-wash); }
+  .status-chip.warn .dot { background: var(--warn); }
+
+  /* ---------- Layout ---------- */
+  .layout {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 28px 32px 64px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 20px;
+  }
+
+  .panel-input { position: sticky; top: 90px; }
+  @media (max-width: 860px) { .panel-input { position: static; } }
+
+  .panel h2 {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+  .panel .panel-sub {
+    margin: 0 0 14px;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+  }
+
   textarea {
     width: 100%;
-    min-height: 110px;
-    background: #0a0e13;
-    border: 1px solid var(--panel-border);
-    border-radius: 6px;
-    color: var(--text);
+    min-height: 150px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--ink);
     font-family: var(--mono);
-    font-size: 0.9rem;
-    padding: 12px 14px;
+    font-size: 0.86rem;
+    line-height: 1.5;
+    padding: 12px 13px;
     resize: vertical;
   }
-  textarea:focus { outline: none; border-color: var(--accent-dim); }
-  .row { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
-  .hint { font-size: 0.8rem; color: var(--text-dim); }
+  textarea:focus { outline: none; border-color: var(--orange-deep); background: var(--surface); }
+  textarea::placeholder { color: var(--ink-faint); }
+
+  .field-hint {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: var(--ink-faint);
+  }
+
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+
   button {
     font-family: var(--sans);
     font-weight: 600;
     font-size: 0.88rem;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border: 1px solid transparent;
-    padding: 10px 20px;
+    padding: 10px 18px;
     cursor: pointer;
     transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
   }
-  button.primary { background: var(--accent); color: #1a1005; }
-  button.primary:hover { background: #ff9c5c; }
-  button.secondary { background: transparent; color: var(--text); border-color: var(--panel-border); }
-  button.secondary:hover { border-color: var(--accent-dim); }
-  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: var(--orange); color: #351900; }
+  button.primary:hover:not(:disabled) { background: #ff8c26; }
+  button.secondary { background: var(--surface); color: var(--ink); border-color: var(--border); }
+  button.secondary:hover:not(:disabled) { border-color: var(--ink-faint); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
   #invalid-note {
-    margin-top: 10px;
-    font-size: 0.8rem;
-    color: var(--suspect);
-    font-family: var(--mono);
+    margin-top: 12px;
+    font-size: 0.82rem;
+    color: var(--danger);
+    background: var(--danger-wash);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    display: none;
   }
-  #results-section { display: none; }
-  .results-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  th, td { text-align: left; padding: 10px 12px; font-size: 0.86rem; border-bottom: 1px solid var(--panel-border); vertical-align: top; }
-  th { color: var(--text-dim); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
-  td.ip { font-family: var(--mono); }
-  .badge {
-    display: inline-block;
-    font-family: var(--mono);
-    font-size: 0.75rem;
+  #invalid-note.visible { display: block; }
+
+  #loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+    font-size: 0.82rem;
+    color: var(--ink-soft);
+  }
+  #loading.visible { display: flex; }
+  .spinner {
+    width: 13px; height: 13px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    border-top-color: var(--orange);
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- Results ---------- */
+  .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .results-header h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+  .results-count { font-size: 0.82rem; color: var(--ink-soft); margin-top: 2px; }
+
+  #empty-state {
+    text-align: center;
+    padding: 56px 24px;
+    color: var(--ink-soft);
+  }
+  #empty-state svg { opacity: 0.35; margin-bottom: 12px; }
+  #empty-state p { margin: 0; font-size: 0.9rem; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; }
+  thead th {
+    text-align: left;
+    font-size: 0.74rem;
     font-weight: 700;
-    padding: 3px 9px;
-    border-radius: 4px;
+    color: var(--ink-soft);
+    padding: 0 12px 10px;
+    border-bottom: 1px solid var(--border);
   }
-  .badge.MALVEILLANT { color: var(--malveillant); background: rgba(229,72,77,0.12); }
-  .badge.SUSPECT { color: var(--suspect); background: rgba(245,165,36,0.12); }
-  .badge.SAIN { color: var(--sain); background: rgba(61,214,140,0.12); }
-  .score { font-family: var(--mono); }
-  .cats { color: var(--text-dim); font-size: 0.8rem; }
-  .src-error { color: var(--text-dim); font-style: italic; }
-  #empty-state { color: var(--text-dim); font-size: 0.88rem; }
-  #loading { display: none; color: var(--accent); font-family: var(--mono); font-size: 0.85rem; margin-top: 10px; }
+  tbody td {
+    padding: 12px;
+    font-size: 0.87rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #fafbfc; }
+  td.ip { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+  td.score { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 4px 10px 4px 8px;
+    border-radius: 999px;
+  }
+  .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .badge.MALVEILLANT { color: var(--danger); background: var(--danger-wash); }
+  .badge.SUSPECT { color: var(--warn); background: var(--warn-wash); }
+  .badge.SAIN { color: var(--ok); background: var(--ok-wash); }
+
+  .cats { color: var(--ink-soft); }
+  .src-error { color: var(--ink-faint); font-style: italic; }
+
+  #results-section { display: none; }
 </style>
 </head>
 <body>
+
 <header>
   <div class="brand">
-    <div class="logo-mark">OCCS</div>
-    <h1><span class="accent">OCCS</span> &middot; Analyseur de reputation IP<span class="subtitle">Orange Cote d'Ivoire &mdash; Cybersecurite</span></h1>
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2 4 5.5V11c0 5.5 3.4 9.7 8 11 4.6-1.3 8-5.5 8-11V5.5L12 2Z" stroke="#351900" stroke-width="1.6" stroke-linejoin="round"/>
+        <path d="M9 12.2 11.2 14.4 15.3 9.8" stroke="#351900" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1>Vérification de réputation IP</h1>
+      <p>OCCS — Orange Côte d'Ivoire, sécurité opérationnelle</p>
+    </div>
   </div>
-  <div id="api-status">verification des cles API...</div>
+  <div class="status-row" id="api-status">
+    <span class="status-chip"><span class="dot"></span>Vérification des clés API…</span>
+  </div>
 </header>
 
-<main>
-  <section class="panel">
-    <h2>Adresses a analyser</h2>
-    <textarea id="ip-input" placeholder="Une adresse IP par ligne, ou separees par des virgules ou des espaces.&#10;Exemple :&#10;8.8.8.8&#10;185.220.101.1"></textarea>
-    <div class="row">
+<div class="layout">
+  <section class="panel panel-input">
+    <h2>Adresses à analyser</h2>
+    <p class="panel-sub">Une IP par ligne, ou séparées par des virgules ou espaces.</p>
+    <textarea id="ip-input" placeholder="8.8.8.8&#10;185.220.101.1&#10;2001:4860:4860::8888"></textarea>
+    <p class="field-hint">Jusqu'à 50 adresses IPv4 ou IPv6 par analyse.</p>
+    <div class="actions">
       <button class="primary" id="analyze-btn">Analyser</button>
       <button class="secondary" id="clear-btn">Effacer</button>
-      <span class="hint">Jusqu'a 50 adresses IPv4 / IPv6</span>
     </div>
     <div id="invalid-note"></div>
-    <div id="loading">Interrogation d'AbuseIPDB et VirusTotal en cours...</div>
+    <div id="loading"><span class="spinner"></span>Interrogation d'AbuseIPDB et VirusTotal…</div>
   </section>
 
-  <section class="panel" id="results-section">
-    <div class="results-header">
-      <h2>Resultats</h2>
-      <button class="secondary" id="pdf-btn">Telecharger le rapport PDF</button>
+  <section class="panel">
+    <div id="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="11" cy="11" r="7" stroke="#8a93a3" stroke-width="1.6"/>
+        <path d="M20 20 16 16" stroke="#8a93a3" stroke-width="1.6" stroke-linecap="round"/>
+      </svg>
+      <p>Les résultats de l'analyse s'afficheront ici.</p>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th>IP</th><th>Score</th><th>Verdict</th><th>AbuseIPDB</th><th>VirusTotal</th><th>Categories / menaces</th>
-        </tr>
-      </thead>
-      <tbody id="results-body"></tbody>
-    </table>
+
+    <div id="results-section">
+      <div class="results-header">
+        <div>
+          <h2>Résultats</h2>
+          <div class="results-count" id="results-count"></div>
+        </div>
+        <button class="secondary" id="pdf-btn">Télécharger le rapport PDF</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>IP</th><th>Score</th><th>Verdict</th><th>AbuseIPDB</th><th>VirusTotal</th><th>Catégories / menaces</th>
+            </tr>
+          </thead>
+          <tbody id="results-body"></tbody>
+        </table>
+      </div>
+    </div>
   </section>
-</main>
+</div>
 
 <script>
 const ipInput = document.getElementById('ip-input');
@@ -198,8 +343,10 @@ const clearBtn = document.getElementById('clear-btn');
 const pdfBtn = document.getElementById('pdf-btn');
 const invalidNote = document.getElementById('invalid-note');
 const loading = document.getElementById('loading');
+const emptyState = document.getElementById('empty-state');
 const resultsSection = document.getElementById('results-section');
 const resultsBody = document.getElementById('results-body');
+const resultsCount = document.getElementById('results-count');
 const apiStatus = document.getElementById('api-status');
 
 let lastResults = [];
@@ -212,13 +359,10 @@ async function checkApiStatus() {
   try {
     const res = await fetch('/api/health');
     const data = await res.json();
-    const parts = [];
-    parts.push(data.abuseipdb_configured ? 'AbuseIPDB: OK' : 'AbuseIPDB: cle manquante');
-    parts.push(data.virustotal_configured ? 'VirusTotal: OK' : 'VirusTotal: cle manquante');
-    const missing = !data.abuseipdb_configured || !data.virustotal_configured;
-    apiStatus.innerHTML = parts.map(p => `<span class="${p.includes('manquante') ? 'warn' : ''}">${p}</span>`).join(' &middot; ');
+    const chip = (label, ok) => `<span class="status-chip ${ok ? 'ok' : 'warn'}"><span class="dot"></span>${label} ${ok ? 'connecté' : 'clé manquante'}</span>`;
+    apiStatus.innerHTML = chip('AbuseIPDB', data.abuseipdb_configured) + chip('VirusTotal', data.virustotal_configured);
   } catch (e) {
-    apiStatus.textContent = 'API indisponible';
+    apiStatus.innerHTML = '<span class="status-chip warn"><span class="dot"></span>API indisponible</span>';
   }
 }
 
@@ -236,14 +380,14 @@ function renderResults(results) {
     const abuse = r.abuseipdb;
     const vt = r.virustotal;
     const abuseTxt = abuse.available
-      ? `${abuse.abuse_confidence_score}% &middot; ${abuse.total_reports} signalement(s)`
+      ? `${abuse.abuse_confidence_score}% · ${abuse.total_reports} signalement(s)`
       : `<span class="src-error">indisponible</span>`;
     const vtTxt = vt.available
       ? `${vt.malicious_engines}/${vt.total_engines} moteurs`
       : `<span class="src-error">indisponible</span>`;
     const cats = r.threat_categories && r.threat_categories.length
       ? escapeHtml(r.threat_categories.join(', '))
-      : '&mdash;';
+      : '—';
 
     tr.innerHTML = `
       <td class="ip">${escapeHtml(r.ip)}</td>
@@ -255,20 +399,24 @@ function renderResults(results) {
     `;
     resultsBody.appendChild(tr);
   }
-  resultsSection.style.display = results.length ? 'block' : 'none';
+  resultsCount.textContent = `${results.length} adresse${results.length > 1 ? 's' : ''} analysée${results.length > 1 ? 's' : ''}`;
+  const hasResults = results.length > 0;
+  resultsSection.style.display = hasResults ? 'block' : 'none';
+  emptyState.style.display = hasResults ? 'none' : 'block';
 }
 
 analyzeBtn.addEventListener('click', async () => {
   const ips = parseIps(ipInput.value);
   invalidNote.textContent = '';
+  invalidNote.classList.remove('visible');
   if (!ips.length) {
     invalidNote.textContent = 'Saisis au moins une adresse IP.';
+    invalidNote.classList.add('visible');
     return;
   }
 
   analyzeBtn.disabled = true;
-  loading.style.display = 'block';
-  resultsSection.style.display = 'none';
+  loading.classList.add('visible');
 
   try {
     const res = await fetch('/api/analyze', {
@@ -279,26 +427,30 @@ analyzeBtn.addEventListener('click', async () => {
     const data = await res.json();
     if (!res.ok) {
       invalidNote.textContent = data.detail || "Erreur lors de l'analyse.";
+      invalidNote.classList.add('visible');
       return;
     }
     lastResults = data.results;
     if (data.invalid_ips && data.invalid_ips.length) {
-      invalidNote.textContent = `Ignorees (format invalide) : ${data.invalid_ips.join(', ')}`;
+      invalidNote.textContent = `Ignorées (format invalide) : ${data.invalid_ips.join(', ')}`;
+      invalidNote.classList.add('visible');
     }
     renderResults(lastResults);
   } catch (e) {
-    invalidNote.textContent = 'Erreur reseau : impossible de contacter le serveur.';
+    invalidNote.textContent = 'Erreur réseau : impossible de contacter le serveur.';
+    invalidNote.classList.add('visible');
   } finally {
     analyzeBtn.disabled = false;
-    loading.style.display = 'none';
+    loading.classList.remove('visible');
   }
 });
 
 clearBtn.addEventListener('click', () => {
   ipInput.value = '';
   invalidNote.textContent = '';
+  invalidNote.classList.remove('visible');
   lastResults = [];
-  resultsSection.style.display = 'none';
+  renderResults([]);
 });
 
 pdfBtn.addEventListener('click', async () => {
@@ -311,7 +463,8 @@ pdfBtn.addEventListener('click', async () => {
       body: JSON.stringify({ results: lastResults }),
     });
     if (!res.ok) {
-      invalidNote.textContent = 'Erreur lors de la generation du rapport PDF.';
+      invalidNote.textContent = 'Erreur lors de la génération du rapport PDF.';
+      invalidNote.classList.add('visible');
       return;
     }
     const blob = await res.blob();
