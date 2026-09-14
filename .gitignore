@@ -1,0 +1,15 @@
+# Secrets - JAMAIS commit ce fichier
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Rapports generes
+reports/*.pdf
+
+# OS / editeurs
+.DS_Store
+.vscode/

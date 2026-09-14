@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCCS | Analyseur de reputation IP</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #151b23;
+    --panel-border: #262e3a;
+    --text: #e6e8eb;
+    --text-dim: #8a94a3;
+    --accent: #ff7900;
+    --accent-dim: #cc6100;
+    --mono: "SFMono-Regular", "JetBrains Mono", Consolas, Menlo, monospace;
+    --sans: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    --malveillant: #e5484d;
+    --suspect: #f5a524;
+    --sain: #3dd68c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+  header {
+    border-bottom: 1px solid var(--panel-border);
+    padding: 28px 40px 22px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  header .brand { display: flex; align-items: center; gap: 12px; }
+  .logo-mark {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--accent);
+    color: #1a1005;
+    font-weight: 800;
+    font-size: 0.72rem;
+    letter-spacing: 0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+  }
+  header h1 .subtitle {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 0.01em;
+    margin-top: 2px;
+  }
+  header h1 span.accent { color: var(--accent); }
+  #api-status {
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+  #api-status .warn { color: var(--suspect); }
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 32px 40px 60px;
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    margin-bottom: 24px;
+  }
+  .panel h2 {
+    margin: 0 0 14px;
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+  textarea {
+    width: 100%;
+    min-height: 110px;
+    background: #0a0e13;
+    border: 1px solid var(--panel-border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--accent-dim); }
+  .row { display: flex; align-items: center; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .hint { font-size: 0.8rem; color: var(--text-dim); }
+  button {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 0.88rem;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  }
+  button.primary { background: var(--accent); color: #1a1005; }
+  button.primary:hover { background: #ff9c5c; }
+  button.secondary { background: transparent; color: var(--text); border-color: var(--panel-border); }
+  button.secondary:hover { border-color: var(--accent-dim); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  #invalid-note {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: var(--suspect);
+    font-family: var(--mono);
+  }
+  #results-section { display: none; }
+  .results-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  th, td { text-align: left; padding: 10px 12px; font-size: 0.86rem; border-bottom: 1px solid var(--panel-border); vertical-align: top; }
+  th { color: var(--text-dim); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  td.ip { font-family: var(--mono); }
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 4px;
+  }
+  .badge.MALVEILLANT { color: var(--malveillant); background: rgba(229,72,77,0.12); }
+  .badge.SUSPECT { color: var(--suspect); background: rgba(245,165,36,0.12); }
+  .badge.SAIN { color: var(--sain); background: rgba(61,214,140,0.12); }
+  .score { font-family: var(--mono); }
+  .cats { color: var(--text-dim); font-size: 0.8rem; }
+  .src-error { color: var(--text-dim); font-style: italic; }
+  #empty-state { color: var(--text-dim); font-size: 0.88rem; }
+  #loading { display: none; color: var(--accent); font-family: var(--mono); font-size: 0.85rem; margin-top: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo-mark">OCCS</div>
+    <h1><span class="accent">OCCS</span> &middot; Analyseur de reputation IP<span class="subtitle">Orange Cote d'Ivoire &mdash; Cybersecurite</span></h1>
+  </div>
+  <div id="api-status">verification des cles API...</div>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Adresses a analyser</h2>
+    <textarea id="ip-input" placeholder="Une adresse IP par ligne, ou separees par des virgules ou des espaces.&#10;Exemple :&#10;8.8.8.8&#10;185.220.101.1"></textarea>
+    <div class="row">
+      <button class="primary" id="analyze-btn">Analyser</button>
+      <button class="secondary" id="clear-btn">Effacer</button>
+      <span class="hint">Jusqu'a 50 adresses IPv4 / IPv6</span>
+    </div>
+    <div id="invalid-note"></div>
+    <div id="loading">Interrogation d'AbuseIPDB et VirusTotal en cours...</div>
+  </section>
+
+  <section class="panel" id="results-section">
+    <div class="results-header">
+      <h2>Resultats</h2>
+      <button class="secondary" id="pdf-btn">Telecharger le rapport PDF</button>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>IP</th><th>Score</th><th>Verdict</th><th>AbuseIPDB</th><th>VirusTotal</th><th>Categories / menaces</th>
+        </tr>
+      </thead>
+      <tbody id="results-body"></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+const ipInput = document.getElementById('ip-input');
+const analyzeBtn = document.getElementById('analyze-btn');
+const clearBtn = document.getElementById('clear-btn');
+const pdfBtn = document.getElementById('pdf-btn');
+const invalidNote = document.getElementById('invalid-note');
+const loading = document.getElementById('loading');
+const resultsSection = document.getElementById('results-section');
+const resultsBody = document.getElementById('results-body');
+const apiStatus = document.getElementById('api-status');
+
+let lastResults = [];
+
+function parseIps(raw) {
+  return raw.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+}
+
+async function checkApiStatus() {
+  try {
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    const parts = [];
+    parts.push(data.abuseipdb_configured ? 'AbuseIPDB: OK' : 'AbuseIPDB: cle manquante');
+    parts.push(data.virustotal_configured ? 'VirusTotal: OK' : 'VirusTotal: cle manquante');
+    const missing = !data.abuseipdb_configured || !data.virustotal_configured;
+    apiStatus.innerHTML = parts.map(p => `<span class="${p.includes('manquante') ? 'warn' : ''}">${p}</span>`).join(' &middot; ');
+  } catch (e) {
+    apiStatus.textContent = 'API indisponible';
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str ?? '';
+  return div.innerHTML;
+}
+
+function renderResults(results) {
+  resultsBody.innerHTML = '';
+  for (const r of results) {
+    const tr = document.createElement('tr');
+
+    const abuse = r.abuseipdb;
+    const vt = r.virustotal;
+    const abuseTxt = abuse.available
+      ? `${abuse.abuse_confidence_score}% &middot; ${abuse.total_reports} signalement(s)`
+      : `<span class="src-error">indisponible</span>`;
+    const vtTxt = vt.available
+      ? `${vt.malicious_engines}/${vt.total_engines} moteurs`
+      : `<span class="src-error">indisponible</span>`;
+    const cats = r.threat_categories && r.threat_categories.length
+      ? escapeHtml(r.threat_categories.join(', '))
+      : '&mdash;';
+
+    tr.innerHTML = `
+      <td class="ip">${escapeHtml(r.ip)}</td>
+      <td class="score">${r.combined_score}/100</td>
+      <td><span class="badge ${r.verdict}">${r.verdict}</span></td>
+      <td>${abuseTxt}</td>
+      <td>${vtTxt}</td>
+      <td class="cats">${cats}</td>
+    `;
+    resultsBody.appendChild(tr);
+  }
+  resultsSection.style.display = results.length ? 'block' : 'none';
+}
+
+analyzeBtn.addEventListener('click', async () => {
+  const ips = parseIps(ipInput.value);
+  invalidNote.textContent = '';
+  if (!ips.length) {
+    invalidNote.textContent = 'Saisis au moins une adresse IP.';
+    return;
+  }
+
+  analyzeBtn.disabled = true;
+  loading.style.display = 'block';
+  resultsSection.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ips }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      invalidNote.textContent = data.detail || "Erreur lors de l'analyse.";
+      return;
+    }
+    lastResults = data.results;
+    if (data.invalid_ips && data.invalid_ips.length) {
+      invalidNote.textContent = `Ignorees (format invalide) : ${data.invalid_ips.join(', ')}`;
+    }
+    renderResults(lastResults);
+  } catch (e) {
+    invalidNote.textContent = 'Erreur reseau : impossible de contacter le serveur.';
+  } finally {
+    analyzeBtn.disabled = false;
+    loading.style.display = 'none';
+  }
+});
+
+clearBtn.addEventListener('click', () => {
+  ipInput.value = '';
+  invalidNote.textContent = '';
+  lastResults = [];
+  resultsSection.style.display = 'none';
+});
+
+pdfBtn.addEventListener('click', async () => {
+  if (!lastResults.length) return;
+  pdfBtn.disabled = true;
+  try {
+    const res = await fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ results: lastResults }),
+    });
+    if (!res.ok) {
+      invalidNote.textContent = 'Erreur lors de la generation du rapport PDF.';
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'rapport_reputation_ip.pdf';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } finally {
+    pdfBtn.disabled = false;
+  }
+});
+
+checkApiStatus();
+</script>
+</body>
+</html>
