@@ -17,8 +17,11 @@ VIRUSTOTAL_URL = "https://www.virustotal.com/api/v3/ip_addresses/{ip}"
 # AbuseIPDB et VirusTotal (et non une moyenne ponderee). Une IP a 100% sur une
 # source et 1% sur l'autre doit rester consideree comme MALVEILLANT : un signal
 # fort d'une seule source ne doit jamais etre dilue par l'autre.
+#
+# Verdict binaire : des qu'il existe le moindre signal (au moins un moteur VT
+# ou un signalement AbuseIPDB), l'IP est MALVEILLANT. Aucun palier intermediaire
+# "SUSPECT" : seul SAIN (aucun signal du tout) fait exception.
 THRESHOLD_MALVEILLANT = 75
-THRESHOLD_SUSPECT = 30
 
 # Mapping des categories AbuseIPDB (cf. documentation officielle)
 ABUSEIPDB_CATEGORIES = {
@@ -133,10 +136,15 @@ def _compute_verdict(abuse: dict, vt: dict) -> dict[str, Any]:
     combined = max(scores_disponibles) if scores_disponibles else 0.0
 
     combined = round(combined, 1)
-    if combined >= THRESHOLD_MALVEILLANT:
+
+    # Y a-t-il un signal brut, meme faible, sur l'une des deux sources ?
+    has_any_signal = (
+        (vt.get("available") and (vt.get("malicious_engines", 0) > 0 or vt.get("suspicious_engines", 0) > 0))
+        or (abuse.get("available") and abuse.get("abuse_confidence_score", 0) > 0)
+    )
+
+    if combined >= THRESHOLD_MALVEILLANT or has_any_signal:
         verdict = "MALVEILLANT"
-    elif combined >= THRESHOLD_SUSPECT:
-        verdict = "SUSPECT"
     else:
         verdict = "SAIN"
 

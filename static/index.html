@@ -257,7 +257,6 @@
   tbody tr:hover { background: #fafbfc; }
   td.ip { font-family: var(--mono); font-weight: 600; white-space: nowrap; border-left: 3px solid transparent; padding-left: 9px; }
   tr[data-verdict="MALVEILLANT"] td.ip { border-left-color: var(--danger); }
-  tr[data-verdict="SUSPECT"] td.ip { border-left-color: var(--warn); }
   tr[data-verdict="SAIN"] td.ip { border-left-color: var(--ok); }
   td.score { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 
@@ -272,7 +271,6 @@
   }
   .badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .badge.MALVEILLANT { color: var(--danger); background: var(--danger-wash); }
-  .badge.SUSPECT { color: var(--warn); background: var(--warn-wash); }
   .badge.SAIN { color: var(--ok); background: var(--ok-wash); }
 
   .cats { color: var(--ink-soft); }
@@ -385,7 +383,7 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-const SEVERITY_ORDER = { MALVEILLANT: 0, SUSPECT: 1, SAIN: 2 };
+const SEVERITY_ORDER = { MALVEILLANT: 0, SAIN: 1 };
 
 function renderResults(results) {
   resultsBody.innerHTML = '';
@@ -419,13 +417,12 @@ function renderResults(results) {
     resultsBody.appendChild(tr);
   }
 
-  const counts = { MALVEILLANT: 0, SUSPECT: 0, SAIN: 0 };
+  const counts = { MALVEILLANT: 0, SAIN: 0 };
   results.forEach(r => { counts[r.verdict] = (counts[r.verdict] || 0) + 1; });
   resultsCount.innerHTML =
     `${results.length} adresse${results.length > 1 ? 's' : ''} analysée${results.length > 1 ? 's' : ''}` +
     (results.length ? `<span class="tally">` +
       `<span><span class="dot" style="background:var(--danger)"></span>${counts.MALVEILLANT} malveillante(s)</span>` +
-      `<span><span class="dot" style="background:var(--warn)"></span>${counts.SUSPECT} suspecte(s)</span>` +
       `<span><span class="dot" style="background:var(--ok)"></span>${counts.SAIN} saine(s)</span>` +
       `</span>` : '');
 

@@ -19,7 +19,6 @@ from reportlab.platypus import (
 
 VERDICT_COLORS = {
     "MALVEILLANT": colors.HexColor("#c0392b"),
-    "SUSPECT": colors.HexColor("#e67e22"),
     "SAIN": colors.HexColor("#27ae60"),
 }
 
