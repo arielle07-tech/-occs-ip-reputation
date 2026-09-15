@@ -44,24 +44,33 @@ def _styles():
 
 
 def _summary_table(results: list[dict], styles) -> Table:
-    header = ["Adresse IP", "Score", "Verdict", "AbuseIPDB", "VirusTotal", "Categories detectees"]
+    header = ["Adresse IP", "Score", "Verdict", "AbuseIPDB", "VirusTotal", "Pays", "Fournisseur / AS"]
     rows = [header]
     for r in results:
         abuse = r["abuseipdb"]
         vt = r["virustotal"]
         abuse_txt = f'{abuse["abuse_confidence_score"]}% ({abuse.get("total_reports", 0)} signalements)' if abuse.get("available") else "N/A"
         vt_txt = f'{vt["malicious_engines"]}/{vt["total_engines"]} moteurs' if vt.get("available") else "N/A"
-        cats = ", ".join(r["threat_categories"][:4]) if r["threat_categories"] else "Aucune"
+        country_txt = r.get("country") or "N/A"
+        provider_parts = []
+        if r.get("network"):
+            provider_parts.append(r["network"])
+        if r.get("asn"):
+            provider_parts.append(f'AS{r["asn"]}')
+        provider_txt = " · ".join(provider_parts) if provider_parts else "N/A"
+        if r.get("as_owner"):
+            provider_txt += f' ({r["as_owner"]})'
         rows.append([
             r["ip"],
             f'{r["combined_score"]}/100',
             r["verdict"],
             abuse_txt,
             vt_txt,
-            cats,
+            country_txt,
+            provider_txt,
         ])
 
-    col_widths = [2.6 * cm, 1.6 * cm, 2.3 * cm, 3.3 * cm, 2.8 * cm, 4.5 * cm]
+    col_widths = [2.4 * cm, 1.4 * cm, 2.1 * cm, 2.9 * cm, 2.2 * cm, 1.4 * cm, 4.7 * cm]
     table = Table(rows, colWidths=col_widths, repeatRows=1)
 
     style_cmds = [
@@ -108,19 +117,16 @@ def _detail_block(r: dict, styles) -> KeepTogether:
         lines.append(f'<b>AbuseIPDB</b> : indisponible ({abuse.get("error", "erreur inconnue")}).')
 
     if vt.get("available"):
+        network_txt = f', reseau {vt.get("network")}' if vt.get("network") else ""
+        asn_txt = f', AS{vt.get("asn")}' if vt.get("asn") else ""
         lines.append(
             f'<b>VirusTotal</b> : {vt["malicious_engines"]}/{vt["total_engines"]} moteurs '
             f'le signalent malveillant ({vt.get("suspicious_engines", 0)} suspects), '
-            f'reputation {vt.get("reputation", 0)}, AS {vt.get("as_owner") or "N/A"}, '
-            f'pays {vt.get("country") or "N/A"}.'
+            f'reputation {vt.get("reputation", 0)}{network_txt}{asn_txt}, '
+            f'fournisseur {vt.get("as_owner") or "N/A"}, pays {vt.get("country") or "N/A"}.'
         )
     else:
         lines.append(f'<b>VirusTotal</b> : indisponible ({vt.get("error", "erreur inconnue")}).')
-
-    if r["threat_categories"]:
-        lines.append(f'<b>Menaces / categories detectees</b> : {", ".join(r["threat_categories"])}.')
-    else:
-        lines.append('<b>Menaces / categories detectees</b> : aucune categorie specifique remontee.')
 
     for line in lines:
         elements.append(Paragraph(line, styles["Small"]))
