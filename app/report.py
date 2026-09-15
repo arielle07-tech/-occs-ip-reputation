@@ -28,7 +28,7 @@ def _styles():
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(
         name="ReportTitle", fontSize=20, leading=24, spaceAfter=4,
-        textColor=colors.HexColor("#1a1a2e"), alignment=TA_CENTER, fontName="Helvetica-Bold",
+        textColor=colors.HexColor("#FF7900"), alignment=TA_CENTER, fontName="Helvetica-Bold",
     ))
     styles.add(ParagraphStyle(
         name="ReportSubtitle", fontSize=10, leading=14,
@@ -66,7 +66,7 @@ def _summary_table(results: list[dict], styles) -> Table:
     table = Table(rows, colWidths=col_widths, repeatRows=1)
 
     style_cmds = [
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1a1a2e")),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#FF7900")),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 8),
@@ -139,7 +139,7 @@ def generate_pdf_report(results: list[dict]) -> bytes:
     styles = _styles()
     story = []
 
-    story.append(Paragraph("Rapport d'analyse de reputation IP", styles["ReportTitle"]))
+    story.append(Paragraph("OCCS — Rapport d'analyse de reputation IP", styles["ReportTitle"]))
     now = datetime.now().strftime("%d/%m/%Y a %H:%M")
     story.append(Paragraph(
         f"Genere le {now} — {len(results)} adresse(s) IP analysee(s) — Sources : AbuseIPDB, VirusTotal",
@@ -147,11 +147,11 @@ def generate_pdf_report(results: list[dict]) -> bytes:
     ))
     story.append(Spacer(1, 16))
 
-    story.append(Paragraph("Synthese", styles["SectionHeading"].clone("SynthHeading", textColor=colors.HexColor("#1a1a2e"))))
+    story.append(Paragraph("Synthese", styles["SectionHeading"].clone("SynthHeading", textColor=colors.HexColor("#FF7900"))))
     story.append(_summary_table(results, styles))
     story.append(PageBreak())
 
-    story.append(Paragraph("Details par adresse IP", styles["SectionHeading"].clone("DetailHeading", textColor=colors.HexColor("#1a1a2e"))))
+    story.append(Paragraph("Details par adresse IP", styles["SectionHeading"].clone("DetailHeading", textColor=colors.HexColor("#FF7900"))))
     for r in results:
         story.append(_detail_block(r, styles))
 

@@ -13,12 +13,10 @@ import httpx
 ABUSEIPDB_URL = "https://api.abuseipdb.com/api/v2/check"
 VIRUSTOTAL_URL = "https://www.virustotal.com/api/v3/ip_addresses/{ip}"
 
-# Ponderation du score combine : AbuseIPDB pese plus lourd car base sur des
-# signalements communautaires directs, VirusTotal complete avec l'avis moteurs AV.
-WEIGHT_ABUSEIPDB = 0.6
-WEIGHT_VIRUSTOTAL = 0.4
-
-# Seuils de verdict sur le score combine (0-100)
+# Logique "pire des deux sources" : le score combine retenu est le MAX entre
+# AbuseIPDB et VirusTotal (et non une moyenne ponderee). Une IP a 100% sur une
+# source et 1% sur l'autre doit rester consideree comme MALVEILLANT : un signal
+# fort d'une seule source ne doit jamais etre dilue par l'autre.
 THRESHOLD_MALVEILLANT = 75
 THRESHOLD_SUSPECT = 30
 
@@ -126,15 +124,13 @@ def _compute_verdict(abuse: dict, vt: dict) -> dict[str, Any]:
     if vt.get("available") and vt.get("total_engines"):
         vt_score = (vt["malicious_engines"] + 0.5 * vt["suspicious_engines"]) / vt["total_engines"] * 100
 
-    # Si une seule source est disponible, on se base uniquement sur elle
-    if abuse.get("available") and vt.get("available"):
-        combined = WEIGHT_ABUSEIPDB * abuse_score + WEIGHT_VIRUSTOTAL * vt_score
-    elif abuse.get("available"):
-        combined = abuse_score
-    elif vt.get("available"):
-        combined = vt_score
-    else:
-        combined = 0.0
+    # Score combine = le plus eleve des deux sources disponibles (pas de moyenne).
+    scores_disponibles = []
+    if abuse.get("available"):
+        scores_disponibles.append(abuse_score)
+    if vt.get("available"):
+        scores_disponibles.append(vt_score)
+    combined = max(scores_disponibles) if scores_disponibles else 0.0
 
     combined = round(combined, 1)
     if combined >= THRESHOLD_MALVEILLANT:

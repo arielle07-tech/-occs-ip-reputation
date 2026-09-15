@@ -29,6 +29,10 @@
 
   * { box-sizing: border-box; }
 
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
   body {
     margin: 0;
     background: var(--bg);
@@ -221,6 +225,9 @@
   }
   .results-header h2 { margin: 0; font-size: 1rem; font-weight: 700; }
   .results-count { font-size: 0.82rem; color: var(--ink-soft); margin-top: 2px; }
+  .tally { display: inline-flex; gap: 10px; margin-left: 8px; }
+  .tally span { display: inline-flex; align-items: center; gap: 4px; }
+  .tally .dot { width: 6px; height: 6px; border-radius: 50%; }
 
   #empty-state {
     text-align: center;
@@ -248,7 +255,10 @@
   }
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #fafbfc; }
-  td.ip { font-family: var(--mono); font-weight: 600; white-space: nowrap; }
+  td.ip { font-family: var(--mono); font-weight: 600; white-space: nowrap; border-left: 3px solid transparent; padding-left: 9px; }
+  tr[data-verdict="MALVEILLANT"] td.ip { border-left-color: var(--danger); }
+  tr[data-verdict="SUSPECT"] td.ip { border-left-color: var(--warn); }
+  tr[data-verdict="SAIN"] td.ip { border-left-color: var(--ok); }
   td.score { font-variant-numeric: tabular-nums; font-weight: 600; white-space: nowrap; }
 
   .badge {
@@ -266,7 +276,10 @@
   .badge.SAIN { color: var(--ok); background: var(--ok-wash); }
 
   .cats { color: var(--ink-soft); }
+  .cat-chip { display: inline-block; font-size: 0.76rem; color: var(--ink-soft); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 1px 7px; margin: 1px 4px 1px 0; }
   .src-error { color: var(--ink-faint); font-style: italic; }
+
+  #invalid-note.info { color: var(--ink-soft); background: var(--bg); }
 
   #results-section { display: none; }
 </style>
@@ -372,10 +385,16 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+const SEVERITY_ORDER = { MALVEILLANT: 0, SUSPECT: 1, SAIN: 2 };
+
 function renderResults(results) {
   resultsBody.innerHTML = '';
-  for (const r of results) {
+
+  const sorted = [...results].sort((a, b) => SEVERITY_ORDER[a.verdict] - SEVERITY_ORDER[b.verdict]);
+
+  for (const r of sorted) {
     const tr = document.createElement('tr');
+    tr.dataset.verdict = r.verdict;
 
     const abuse = r.abuseipdb;
     const vt = r.virustotal;
@@ -386,7 +405,7 @@ function renderResults(results) {
       ? `${vt.malicious_engines}/${vt.total_engines} moteurs`
       : `<span class="src-error">indisponible</span>`;
     const cats = r.threat_categories && r.threat_categories.length
-      ? escapeHtml(r.threat_categories.join(', '))
+      ? r.threat_categories.map(c => `<span class="cat-chip">${escapeHtml(c)}</span>`).join('')
       : '—';
 
     tr.innerHTML = `
@@ -399,7 +418,17 @@ function renderResults(results) {
     `;
     resultsBody.appendChild(tr);
   }
-  resultsCount.textContent = `${results.length} adresse${results.length > 1 ? 's' : ''} analysée${results.length > 1 ? 's' : ''}`;
+
+  const counts = { MALVEILLANT: 0, SUSPECT: 0, SAIN: 0 };
+  results.forEach(r => { counts[r.verdict] = (counts[r.verdict] || 0) + 1; });
+  resultsCount.innerHTML =
+    `${results.length} adresse${results.length > 1 ? 's' : ''} analysée${results.length > 1 ? 's' : ''}` +
+    (results.length ? `<span class="tally">` +
+      `<span><span class="dot" style="background:var(--danger)"></span>${counts.MALVEILLANT} malveillante(s)</span>` +
+      `<span><span class="dot" style="background:var(--warn)"></span>${counts.SUSPECT} suspecte(s)</span>` +
+      `<span><span class="dot" style="background:var(--ok)"></span>${counts.SAIN} saine(s)</span>` +
+      `</span>` : '');
+
   const hasResults = results.length > 0;
   resultsSection.style.display = hasResults ? 'block' : 'none';
   emptyState.style.display = hasResults ? 'none' : 'block';
@@ -408,7 +437,7 @@ function renderResults(results) {
 analyzeBtn.addEventListener('click', async () => {
   const ips = parseIps(ipInput.value);
   invalidNote.textContent = '';
-  invalidNote.classList.remove('visible');
+  invalidNote.classList.remove('visible', 'info');
   if (!ips.length) {
     invalidNote.textContent = 'Saisis au moins une adresse IP.';
     invalidNote.classList.add('visible');
@@ -416,6 +445,8 @@ analyzeBtn.addEventListener('click', async () => {
   }
 
   analyzeBtn.disabled = true;
+  clearBtn.disabled = true;
+  ipInput.disabled = true;
   loading.classList.add('visible');
 
   try {
@@ -433,7 +464,7 @@ analyzeBtn.addEventListener('click', async () => {
     lastResults = data.results;
     if (data.invalid_ips && data.invalid_ips.length) {
       invalidNote.textContent = `Ignorées (format invalide) : ${data.invalid_ips.join(', ')}`;
-      invalidNote.classList.add('visible');
+      invalidNote.classList.add('visible', 'info');
     }
     renderResults(lastResults);
   } catch (e) {
@@ -441,6 +472,8 @@ analyzeBtn.addEventListener('click', async () => {
     invalidNote.classList.add('visible');
   } finally {
     analyzeBtn.disabled = false;
+    clearBtn.disabled = false;
+    ipInput.disabled = false;
     loading.classList.remove('visible');
   }
 });
@@ -448,7 +481,7 @@ analyzeBtn.addEventListener('click', async () => {
 clearBtn.addEventListener('click', () => {
   ipInput.value = '';
   invalidNote.textContent = '';
-  invalidNote.classList.remove('visible');
+  invalidNote.classList.remove('visible', 'info');
   lastResults = [];
   renderResults([]);
 });

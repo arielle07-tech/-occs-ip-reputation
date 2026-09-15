@@ -1,4 +1,4 @@
-# Analyseur de reputation IP
+# OCCS — Analyseur de reputation IP
 
 Application web (FastAPI) pour analyser la reputation de plusieurs adresses IP
 simultanement via AbuseIPDB et VirusTotal, avec export du resultat en rapport PDF.
@@ -7,9 +7,13 @@ simultanement via AbuseIPDB et VirusTotal, avec export du resultat en rapport PD
 
 - Saisie de plusieurs IP (une par ligne, ou separees par virgules/espaces), IPv4 et IPv6
 - Interrogation en parallele d'AbuseIPDB et VirusTotal
-- Score combine pondere (60% AbuseIPDB / 40% VirusTotal) et verdict SAIN / SUSPECT / MALVEILLANT
-- Detection des categories de menace (spam, phishing, botnet, brute-force, etc.)
-- Export d'un rapport PDF (synthese + fiche detaillee par IP)
+- Score combine = le MAX des deux sources (pas de moyenne) : une IP a 100% sur une
+  source et 1% sur l'autre reste MALVEILLANT, un signal fort n'est jamais dilue
+- Resultats tries par severite (malveillant en premier) avec repartition chiffree
+  en tete de tableau, pour un triage rapide
+- Detection des categories de menace (spam, phishing, botnet, brute-force, etc.),
+  affichees sous forme de puces
+- Export d'un rapport PDF (synthese + fiche detaillee par IP), couleurs Orange CI
 - Aucune persistance en base : chaque analyse est independante, le PDF est le seul livrable conserve
 
 ## Installation
@@ -62,8 +66,8 @@ ip-reputation-app/
   gratuites — AbuseIPDB : 1000 requetes/jour en gratuit, VirusTotal : 4 requetes/min).
 - Si une des deux cles API n'est pas configuree, l'appli continue de fonctionner en
   se basant uniquement sur la source disponible (l'indicateur en haut de page te le signale).
-- Les seuils de verdict (SAIN < 30 <= SUSPECT < 75 <= MALVEILLANT) et la ponderation
-  60/40 sont definis en haut de `app/reputation.py` — modifiables facilement.
+- Les seuils de verdict (SAIN < 30 <= SUSPECT < 75 <= MALVEILLANT) sont definis en
+  haut de `app/reputation.py` — modifiables facilement.
 - Pour un futur deploiement : ajouter une authentification (l'appli n'en a aucune
   actuellement, pensee pour un usage local de test), passer les cles API en secrets
   d'environnement du serveur, et envisager un stockage d'historique si le besoin evolue.
