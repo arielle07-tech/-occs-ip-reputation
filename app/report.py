@@ -8,8 +8,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
-    KeepTogether,
-    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -38,23 +36,10 @@ def _styles():
         textColor=colors.white, fontName="Helvetica-Bold",
     ))
     styles.add(ParagraphStyle(
-        name="Small", fontSize=8.5, leading=11, textColor=colors.HexColor("#333333"),
-    ))
-    styles.add(ParagraphStyle(
         name="CellText", fontSize=8, leading=10.5, textColor=colors.HexColor("#222222"),
     ))
     styles.add(ParagraphStyle(
         name="CellHeader", fontSize=8, leading=10.5, textColor=colors.white, fontName="Helvetica-Bold",
-    ))
-    styles.add(ParagraphStyle(
-        name="KVLabel", fontSize=8.5, leading=13, textColor=colors.HexColor("#666666"), fontName="Helvetica-Bold",
-    ))
-    styles.add(ParagraphStyle(
-        name="KVValue", fontSize=8.5, leading=13, textColor=colors.HexColor("#222222"),
-    ))
-    styles.add(ParagraphStyle(
-        name="SourceHeading", fontSize=10.5, leading=14, spaceAfter=4,
-        textColor=colors.HexColor("#FF7900"), fontName="Helvetica-Bold",
     ))
     return styles
 
@@ -108,82 +93,6 @@ def _summary_table(results: list[dict], styles) -> Table:
     return table
 
 
-def _kv_table(pairs: list[tuple[str, str]], styles) -> Table:
-    rows = [[Paragraph(label, styles["KVLabel"]), Paragraph(str(value), styles["KVValue"])] for label, value in pairs]
-    table = Table(rows, colWidths=[3.0 * cm, 5.5 * cm])
-    table.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("TOPPADDING", (0, 0), (-1, -1), 1.5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    return table
-
-
-def _detail_block(r: dict, styles) -> KeepTogether:
-    abuse = r["abuseipdb"]
-    vt = r["virustotal"]
-    color = VERDICT_COLORS.get(r["verdict"], colors.black)
-
-    heading_style = ParagraphStyle(
-        "IPHeading", parent=styles["SectionHeading"], backColor=color,
-    )
-    elements = [
-        Spacer(1, 10),
-        Paragraph(f'&nbsp;{r["ip"]} — {r["verdict"]} ({r["combined_score"]}/100)&nbsp;', heading_style),
-        Spacer(1, 8),
-    ]
-
-    if abuse.get("available"):
-        abuse_pairs = [
-            ("Score de confiance", f'{abuse["abuse_confidence_score"]}%'),
-            ("Signalements", str(abuse.get("total_reports", 0))),
-            ("Pays", abuse.get("country_code") or "N/A"),
-            ("FAI", abuse.get("isp") or "N/A"),
-            ("Type", abuse.get("usage_type") or "N/A"),
-        ]
-        abuse_col = [Paragraph("AbuseIPDB", styles["SourceHeading"]), _kv_table(abuse_pairs, styles)]
-    else:
-        abuse_col = [
-            Paragraph("AbuseIPDB", styles["SourceHeading"]),
-            Paragraph(f'Indisponible ({abuse.get("error", "erreur inconnue")}).', styles["KVValue"]),
-        ]
-
-    if vt.get("available"):
-        vt_pairs = [
-            ("Moteurs malveillants", f'{vt["malicious_engines"]}/{vt["total_engines"]}'),
-            ("Moteurs suspects", str(vt.get("suspicious_engines", 0))),
-            ("Reputation", str(vt.get("reputation", 0))),
-            ("Reseau (CIDR)", vt.get("network") or "N/A"),
-            ("ASN", f'AS{vt.get("asn")}' if vt.get("asn") else "N/A"),
-            ("Fournisseur", vt.get("as_owner") or "N/A"),
-            ("Pays", vt.get("country") or "N/A"),
-        ]
-        vt_col = [Paragraph("VirusTotal", styles["SourceHeading"]), _kv_table(vt_pairs, styles)]
-    else:
-        vt_col = [
-            Paragraph("VirusTotal", styles["SourceHeading"]),
-            Paragraph(f'Indisponible ({vt.get("error", "erreur inconnue")}).', styles["KVValue"]),
-        ]
-
-    two_col = Table([[abuse_col, vt_col]], colWidths=[8.7 * cm, 8.7 * cm])
-    two_col.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (0, 0), 0),
-        ("LEFTPADDING", (1, 0), (1, 0), 12),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 0),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
-    ]))
-    elements.append(two_col)
-    elements.append(Spacer(1, 4))
-    elements.append(Table([[""]], colWidths=[17.4 * cm], style=TableStyle([
-        ("LINEBELOW", (0, 0), (-1, -1), 0.5, colors.HexColor("#dddddd")),
-    ])))
-
-    return KeepTogether(elements)
-
-
 def generate_pdf_report(results: list[dict]) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -203,11 +112,6 @@ def generate_pdf_report(results: list[dict]) -> bytes:
 
     story.append(Paragraph("Synthese", styles["SectionHeading"].clone("SynthHeading", textColor=colors.HexColor("#FF7900"))))
     story.append(_summary_table(results, styles))
-    story.append(PageBreak())
-
-    story.append(Paragraph("Details par adresse IP", styles["SectionHeading"].clone("DetailHeading", textColor=colors.HexColor("#FF7900"))))
-    for r in results:
-        story.append(_detail_block(r, styles))
 
     doc.build(story)
     buffer.seek(0)
