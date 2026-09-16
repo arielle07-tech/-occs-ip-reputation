@@ -337,7 +337,7 @@
         <table>
           <thead>
             <tr>
-              <th>IP</th><th>Score</th><th>Verdict</th><th>AbuseIPDB</th><th>VirusTotal</th><th>Catégories / menaces</th>
+              <th>IP</th><th>Score</th><th>Verdict</th><th>AbuseIPDB</th><th>VirusTotal</th><th>Pays</th><th>Fournisseur / AS</th>
             </tr>
           </thead>
           <tbody id="results-body"></tbody>
@@ -405,6 +405,13 @@ function renderResults(results) {
     const cats = r.threat_categories && r.threat_categories.length
       ? r.threat_categories.map(c => `<span class="cat-chip">${escapeHtml(c)}</span>`).join('')
       : '—';
+    const countryTxt = r.country ? escapeHtml(r.country) : '—';
+    const providerParts = [];
+    if (r.network) providerParts.push(escapeHtml(r.network));
+    if (r.asn) providerParts.push(`AS${escapeHtml(String(r.asn))}`);
+    const providerTxt = providerParts.length
+      ? `${providerParts.join(' · ')}${r.as_owner ? ` <span class="src-error">(${escapeHtml(r.as_owner)})</span>` : ''}`
+      : (r.as_owner ? escapeHtml(r.as_owner) : '—');
 
     tr.innerHTML = `
       <td class="ip">${escapeHtml(r.ip)}</td>
@@ -412,7 +419,8 @@ function renderResults(results) {
       <td><span class="badge ${r.verdict}">${r.verdict}</span></td>
       <td>${abuseTxt}</td>
       <td>${vtTxt}</td>
-      <td class="cats">${cats}</td>
+      <td>${countryTxt}</td>
+      <td class="cats">${providerTxt}</td>
     `;
     resultsBody.appendChild(tr);
   }

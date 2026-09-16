@@ -114,6 +114,8 @@ async def _query_virustotal(client: httpx.AsyncClient, ip: str, api_key: str) ->
             "total_engines": total_engines,
             "reputation": attrs.get("reputation", 0),
             "country": attrs.get("country"),
+            "network": attrs.get("network"),
+            "asn": attrs.get("asn"),
             "as_owner": attrs.get("as_owner"),
             "threat_labels": sorted(threat_labels)[:15],
         }
@@ -163,6 +165,15 @@ async def analyze_ip(client: httpx.AsyncClient, ip: str, abuse_key: str, vt_key:
         if label not in all_categories:
             all_categories.append(label)
 
+    # Pays : VirusTotal renvoie deja un code pays ISO, AbuseIPDB en repli.
+    country = vt_result.get("country") or abuse_result.get("country_code")
+
+    # Fournisseur / AS : uniquement disponible via VirusTotal (network + asn + as_owner).
+    # AbuseIPDB ne fournit pas le CIDR/ASN, seulement l'ISP en texte libre (repli).
+    network = vt_result.get("network")
+    asn = vt_result.get("asn")
+    as_owner = vt_result.get("as_owner") or abuse_result.get("isp")
+
     return {
         "ip": ip,
         "checked_at": datetime.now(timezone.utc).isoformat(),
@@ -171,6 +182,10 @@ async def analyze_ip(client: httpx.AsyncClient, ip: str, abuse_key: str, vt_key:
         "combined_score": verdict_info["combined_score"],
         "verdict": verdict_info["verdict"],
         "threat_categories": all_categories,
+        "country": country,
+        "network": network,
+        "asn": asn,
+        "as_owner": as_owner,
     }
 
 
